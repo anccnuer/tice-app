@@ -1,0 +1,72 @@
+name: Release
+
+# 只在推送版本标签时触发：git tag v1.0.0 && git push origin v1.0.0
+# 普通的 push、Pull Request、定时任务都不会运行本工作流。
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+# 同一个标签重复推送时不并发跑两次发布
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    name: Build APK and publish release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" > /dev/null
+
+      # gradlew 在仓库里的文件模式是 644，Linux runner 上需要显式加执行权限
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Build APK and run unit tests
+        run: ./gradlew assembleDebug testDebugUnitTest --no-daemon --console=plain
+
+      - name: Prepare release assets
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          mkdir -p release
+          cp app/build/outputs/apk/debug/app-debug.apk "release/tice-app-${TAG_NAME}.apk"
+          cd release
+          sha256sum *.apk > SHA256SUMS.txt
+
+      # 使用 runner 自带的 gh CLI 与内置 GITHUB_TOKEN，不引入额外第三方 action
+      # 项目尚未配置签名密钥，因此发布的是可直接安装的 debug 签名包；
+      # 如需正式签名，配置 keystore secrets 并在 app/build.gradle.kts 里加 signingConfig 后改用 assembleRelease。
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          args=(--title "$TAG_NAME" --generate-notes)
+          if [[ "$TAG_NAME" == *-* ]]; then
+            args+=(--prerelease)
+          fi
+          gh release create "$TAG_NAME" "${args[@]}" \
+            release/*.apk release/SHA256SUMS.txt

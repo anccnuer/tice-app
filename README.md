@@ -117,7 +117,28 @@ python scripts\verify_export.py verify app\build\export-preview.xlsx data-exampl
 3. `gradle.properties` 里的 `org.gradle.java.home` 由 `setup-env.ps1` 按本机绝对路径生成，含本机用户名且对他人无效，**提交前请保持删除状态**；构建请用 `scripts/build-apk.ps1`（自动设置 `JAVA_HOME`）或自行设置环境变量。每次运行 `setup-env.ps1` 该行都会重新出现，提交前记得检查。
 4. 推送前跑 `git status` 与 `git diff --cached`，确认暂存区没有真实数据文件。若曾把含真实信息的文件提交进历史，仅删除文件不够，必须先清理 git 历史再公开仓库。
 
-## 八、目录
+## 八、发布新版本（GitHub Actions）
+
+`.github/workflows/release.yml` 只由**版本标签**触发；普通的 push、Pull Request、定时任务都不会构建或发布：
+
+```powershell
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+工作流在 `ubuntu-latest` 上依次：安装 JDK 17 与 Android SDK 35 / Build Tools 35.0.0 → 执行 `assembleDebug testDebugUnitTest`（单测不通过即中止）→ 生成 `tice-app-<tag>.apk` 与 `SHA256SUMS.txt` → 用内置 `GITHUB_TOKEN` 创建同名 GitHub Release，并自动附上 `--generate-notes` 生成的更新日志。标签里带 `-`（如 `v1.1.0-rc1`）会自动标记为预发布。只申请 `contents: write` 权限，无需配置额外 secrets。
+
+发版前请确认：
+
+1. 更新 `app/build.gradle.kts` 的 `versionCode`（每次递增）与 `versionName`；标签只用于命名 Release，不会自动写进 APK。
+2. 按第七节清单复核隐私与 `.gitignore`，确认没有真实学生数据或本机路径被提交。
+3. 本地先跑 `scripts\build-apk.ps1`，确认构建与 6 个单测通过后再打标签。
+
+**产物说明**：工程尚未配置签名密钥，Release 附的是 debug 签名、可直接安装的 APK，适合校内自行分发。若要发布正式签名包，需在仓库 Secrets 放入 keystore 与口令、在 `app/build.gradle.kts` 增加 `signingConfig`，并把工作流的 `assembleDebug` 改为 `assembleRelease`；不要把未签名的 `app-release-unsigned.apk` 直接分发。
+
+> 如果希望改成「在 GitHub 网页点 Publish release 之后才构建」，把 `on:` 改为 `release: types: [published]`，并改用 `gh release upload` 把产物上传到已存在的 Release。
+
+## 九、目录
 
 ```
 settings.gradle.kts / build.gradle.kts / gradle.properties / gradle/libs.versions.toml
