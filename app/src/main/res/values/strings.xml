@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">体测助手</string>
+    <string name="backup_channel_name">局域网备份服务</string>
+    <string name="backup_channel_desc">手机端只读备份网页服务正在运行</string>
+    <string name="press_back_again_to_exit">再按一次返回键退出程序</string>
+</resources>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:," />
+<title>体测助手 · 局域网备份</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#F5F7FB;color:#111827;
+font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;line-height:1.6}
+.wrap{max-width:880px;margin:0 auto;padding:32px 20px 60px}
+.hero{background:linear-gradient(135deg,#1E3A8A 0%,#2563EB 55%,#0EA5A4 100%);
+color:#fff;border-radius:24px;padding:36px 34px;box-shadow:0 18px 40px rgba(37,99,235,.22)}
+.label{font-size:12px;letter-spacing:.22em;opacity:.75;font-weight:700}
+h1{font-size:30px;margin:12px 0 10px}h2{font-size:20px;margin:0 0 6px}
+p{margin:0 0 12px}.sub{color:#6B7280;font-size:14px}
+.meta{display:flex;gap:22px;flex-wrap:wrap;margin:18px 0 20px;font-size:14px;opacity:.95}
+.meta b{font-size:18px;letter-spacing:.18em}
+.actions{display:flex;gap:12px;flex-wrap:wrap}
+.primary,.ghost,.btn{display:inline-flex;align-items:center;justify-content:center;
+border-radius:12px;padding:11px 20px;font-size:15px;font-weight:600;text-decoration:none;
+border:0;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
+.primary{background:#fff;color:#1D4ED8;box-shadow:0 6px 16px rgba(0,0,0,.12)}
+.primary:hover,.btn:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(0,0,0,.16)}
+.ghost{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.5)}
+.card{background:#fff;border-radius:20px;padding:26px;margin-top:22px;box-shadow:0 8px 26px rgba(30,58,138,.07)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:16px;
+padding:16px 0;border-top:1px solid #EEF2F7;flex-wrap:wrap}
+.file{display:flex;align-items:center;gap:12px}.file strong{font-size:15px;display:block}
+.file small{color:#6B7280;font-size:13px}
+.dot{width:10px;height:10px;border-radius:50%;background:#16A34A;box-shadow:0 0 0 4px rgba(22,163,74,.14)}
+.btn{background:#2563EB;color:#fff;padding:9px 18px;font-size:14px}
+ol{margin:8px 0 0;padding-left:22px;color:#374151}
+.warn{margin-top:22px;background:#FFFBEB;border:1px solid #FDE68A;color:#92400E;
+border-radius:14px;padding:16px 18px;font-size:14px}
+@media(max-width:600px){.wrap{padding:18px 14px 40px}.hero{padding:26px 22px}h1{font-size:24px}}
+</style></head><body><div class="wrap">
+<div class="hero">
+  <div class="label">READ-ONLY BACKUP</div>
+  <h1>局域网备份下载</h1>
+  <p>手机与电脑处于同一 WiFi 时，在此下载完整备份包。此页面<strong>只读</strong>，不提供上传或修改数据。</p>
+  <div class="meta"><span>访问码 <b>1234</b></span><span>共 2 个备份</span></div>
+  <div class="actions"><a class="primary" href="preview-backup.zip" download>下载最新备份</a><a class="ghost" href="#status">服务状态</a></div>
+</div>
+<div class="card"><h2>备份快照</h2><p class="sub">每个备份包包含原始 Excel 模板、全部学生与成绩数据、校验信息。</p>
+<div class="row">
+  <div class="file"><span class="dot"></span><div><strong>tice-backup-20261111_101530.zip</strong><small>2026-11-11 10:15:30 · 14 KB</small></div></div>
+  <a class="btn" href="preview-backup.zip" download>下载备份包</a>
+</div>
+<div class="row">
+  <div class="file"><span class="dot"></span><div><strong>tice-backup-20261110_164202.zip</strong><small>2026-11-10 16:42:02 · 13 KB</small></div></div>
+  <a class="btn" href="preview-backup.zip" download>下载备份包</a>
+</div>
+</div>
+<div class="card" id="status"><h2>如何恢复</h2><ol>
+  <li>在电脑上下载备份包（.zip），妥善保存到本地。</li>
+  <li>手机打开「体测助手 → 数据与备份 → 导入备份包恢复」。</li>
+  <li>选择该 zip 文件，App 校验通过后一键恢复，恢复前会自动保留一份回滚快照。</li>
+</ol></div>
+<div class="warn">备份包含学生姓名、学籍号等敏感信息，请仅在可信的校内网络开启本服务，用完及时关闭。</div>
+</div></body></html>

@@ -1,0 +1,75 @@
+# ============================================================
+# 体测助手 .gitignore
+# 入库范围：源码、Gradle 配置与 wrapper、构建脚本、示例数据、文档。
+# 以下均为本机生成的产物 / 缓存 / 本地私有配置，一律排除。
+# ============================================================
+
+# 1) 本地工具链与 Gradle 缓存
+# setup-env.ps1 下载的 JDK17 / Android SDK / Gradle 发行版（约 3.5GB）
+.tools/
+.gradle/
+local.properties
+
+# 2) IDE 配置、本机计划数据与操作系统垃圾文件
+.idea/
+*.iml
+.vscode/
+# 只排除版本控制，目录本身及其内容保留、不删除
+.codebuddy/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+
+# 3) 构建输出与编译中间产物（匹配任意层级）
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+.kotlin/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+*.flat
+*.len
+*.hprof
+
+# 4) 日志、临时文件与编辑器 / Python 缓存
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+*.pyc
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+
+# 5) 运行期导出的成绩表与备份包
+# 注意：scripts/preview-backup.zip 是静态预览页引用的示例资源，必须保留
+体测_*.xlsx
+体测成绩_*.xlsx
+export-*.xlsx
+tice-backup-*.zip
+
+# 6) 签名密钥与本地私有配置（若以后新增）
+*.jks
+*.keystore
+keystore.properties
+
+# ------------------------------------------------------------
+# 明确需要入库，不要加入上面的排除规则：
+#   gradle/wrapper/gradle-wrapper.jar
+#   gradle/wrapper/gradle-wrapper.properties
+#   gradle/libs.versions.toml
+#   app/src/main/assets/data-example.xlsx
+#   data-example.xlsx
+#   scripts/*.ps1 / *.py / *.html / preview-backup.zip
+#   logo.png 与 app/src/main/res/** 图标资源
+#   app/schemas/（Room 数据库结构快照，用于迁移校验）
+# ------------------------------------------------------------
