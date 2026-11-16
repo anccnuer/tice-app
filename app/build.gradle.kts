@@ -20,8 +20,8 @@ android {
         applicationId = "com.example.tice"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0-rc1"
         // 只保留中英文资源，剔除依赖库携带的其它语言翻译
         resourceConfigurations += setOf("zh", "en")
     }
