@@ -126,7 +126,7 @@ git tag v1.0.1
 git push origin v1.0.1
 ```
 
-工作流在 `ubuntu-latest` 上依次：安装 JDK 17 与 Android SDK 35 / Build Tools 35.0.0 → 执行 `assembleDebug testDebugUnitTest`（单测不通过即中止）→ 生成 `tice-app-<tag>.apk` 与 `SHA256SUMS.txt` → 用内置 `GITHUB_TOKEN` 创建同名 GitHub Release，并自动附上 `--generate-notes` 生成的更新日志。标签里带 `-`（如 `v1.1.0-rc1`）会自动标记为预发布。只申请 `contents: write` 权限，无需配置额外 secrets。
+工作流在 `ubuntu-latest` 上依次：安装 JDK 17 与 Android SDK 35 / Build Tools 35.0.0 → 从 Secrets 还原签名材料 → 执行 `assembleRelease testDebugUnitTest`（单测不通过即中止）→ `apksigner` 校验签名 → 生成 `tice-app-<tag>.apk` 与 `SHA256SUMS.txt` → 用内置 `GITHUB_TOKEN` 创建同名 GitHub Release，并自动附上 `--generate-notes` 生成的更新日志。标签里带 `-`（如 `v1.1.0-rc1`）会自动标记为预发布。只申请 `contents: write` 权限，另需 4 个签名相关 secrets（见下文）。
 
 发版前请确认：
 
@@ -134,7 +134,7 @@ git push origin v1.0.1
 2. 按第七节清单复核隐私与 `.gitignore`，确认没有真实学生数据或本机路径被提交。
 3. 本地先跑 `scripts\build-apk.ps1`，确认构建与 16 个单测通过后再打标签。
 
-**产物说明**：本地已配置 release 签名，`assembleRelease` 产出可直接安装的 `app-release.apk`（约 1.2 MB）；GitHub Actions 仍发布 debug 包，适合校内自行分发。
+**产物说明**：本地与 GitHub Actions 均使用正式 keystore 签名，`assembleRelease` 产出可直接安装的 `app-release.apk`（约 1.2 MB）。
 
 #### 签名与密钥管理
 
@@ -142,7 +142,7 @@ git push origin v1.0.1
 - 证书 SHA-256 指纹：`28:32:6B:DB:D9:C5:F0:6F:E9:19:8A:0A:D1:9A:73:3E:CB:B5:21:6F:46:40:4D:8F:27:0B:8A:98:EA:F5:FF:55`。
 - **必须离线备份** `tice-release.jks` 与 `keystore.properties`。密钥或口令丢失后，新包无法覆盖安装旧版本。
 - 未配置 `keystore.properties` 时（例如 CI 或他人克隆），release 自动回退为未签名，不影响 debug 构建。
-- 若要让 GitHub Actions 发布签名包：在仓库 Secrets 配置 `KEYSTORE_BASE64`、`KEYSTORE_PASSWORD`、`KEY_ALIAS`、`KEY_PASSWORD`，工作流解码 keystore 后执行 `assembleRelease`。当前工作流未启用该步骤，发布产物仍是 debug 包。
+- GitHub Actions 发布签名包：在仓库 Secrets 配置 `KEYSTORE_BASE64`（`tice-release.jks` 的 Base64）、`KEYSTORE_PASSWORD`、`KEY_ALIAS`、`KEY_PASSWORD`。推送 `v*` 标签后工作流会还原签名材料、构建并校验签名；缺少 `KEYSTORE_BASE64` 时会在 `Decode keystore` 步骤明确失败。
 
 ### 体积对比（v0.1.0 优化后）
 

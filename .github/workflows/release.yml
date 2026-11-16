@@ -57,21 +57,48 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
 
-      - name: Build APK and run unit tests
-        run: ./gradlew assembleDebug testDebugUnitTest --no-daemon --console=plain
+      # 从仓库 Secrets 还原正式签名材料。两个文件都在 .gitignore 中，不会进入提交。
+      - name: Decode keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KEYSTORE_BASE64}" ]; then
+            echo "::error::KEYSTORE_BASE64 未配置，无法构建签名包"
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > tice-release.jks
+          chmod 600 tice-release.jks
+          {
+            echo "storeFile=tice-release.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > keystore.properties
+          chmod 600 keystore.properties
+
+      - name: Build signed APK and run unit tests
+        run: ./gradlew assembleRelease testDebugUnitTest --no-daemon --console=plain
+
+      - name: Verify APK signature
+        run: |
+          set -euo pipefail
+          build_tools="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n1)"
+          "$build_tools/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk
 
       - name: Prepare release assets
         env:
           TAG_NAME: ${{ github.ref_name }}
         run: |
           mkdir -p release
-          cp app/build/outputs/apk/debug/app-debug.apk "release/tice-app-${TAG_NAME}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "release/tice-app-${TAG_NAME}.apk"
           cd release
           sha256sum *.apk > SHA256SUMS.txt
 
       # 使用 runner 自带的 gh CLI 与内置 GITHUB_TOKEN，不引入额外第三方 action
-      # 项目尚未配置签名密钥，因此发布的是可直接安装的 debug 签名包；
-      # 如需正式签名，配置 keystore secrets 并在 app/build.gradle.kts 里加 signingConfig 后改用 assembleRelease。
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -83,3 +110,8 @@ jobs:
           fi
           gh release create "$TAG_NAME" "${args[@]}" \
             release/*.apk release/SHA256SUMS.txt
+
+      # runner 是一次性的，仍然显式清理，避免签名材料残留在日志或缓存中
+      - name: Remove signing material
+        if: always()
+        run: rm -f tice-release.jks keystore.properties
