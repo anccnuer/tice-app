@@ -20,6 +20,9 @@ jobs:
     name: Build APK and publish release
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Secrets 放在 Environment "release" 下，job 必须声明同名 environment 才能读取。
+    # 若该 environment 配置了 required reviewers，标签推送后会等待人工批准再开始构建。
+    environment: release
 
     steps:
       - name: Checkout
@@ -67,7 +70,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${KEYSTORE_BASE64}" ]; then
-            echo "::error::KEYSTORE_BASE64 未配置，无法构建签名包"
+            echo "::error::KEYSTORE_BASE64 为空：请确认 Secrets 已添加，且 job 声明的 environment 与 Secrets 所在环境一致"
             exit 1
           fi
           echo "$KEYSTORE_BASE64" | base64 -d > tice-release.jks
