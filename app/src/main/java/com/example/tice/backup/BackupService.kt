@@ -11,6 +11,10 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.tice.R
 import com.example.tice.TiceApp
+import com.example.tice.util.BACKUP_NOTIFICATION_ID
+import com.example.tice.util.DEFAULT_BACKUP_PORT
+import com.example.tice.util.MAX_BACKUP_CODE
+import com.example.tice.util.MIN_BACKUP_CODE
 import com.example.tice.util.NetworkUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +33,6 @@ class BackupService : Service() {
     companion object {
         private const val TAG = "TiceBackup"
         private const val CHANNEL_ID = "tice_backup"
-        private const val NOTIFICATION_ID = 1001
         const val ACTION_START = "com.example.tice.backup.START"
         const val ACTION_STOP = "com.example.tice.backup.STOP"
 
@@ -61,10 +64,10 @@ class BackupService : Service() {
         // Android 要求 startForegroundService 之后必须立刻调用 startForeground
         createChannel()
         startForeground(
-            NOTIFICATION_ID,
+            BACKUP_NOTIFICATION_ID,
             NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_menu_agenda)
-                .setContentTitle("正在启动体测备份服务…")
+                .setContentTitle(getString(R.string.backup_starting))
                 .setOngoing(true)
                 .build()
         )
@@ -75,7 +78,7 @@ class BackupService : Service() {
     private fun startServer() {
         if (server != null) return
         val container = (application as TiceApp).container
-        val accessCode = (1000..9999).random().toString()
+        val accessCode = (MIN_BACKUP_CODE..MAX_BACKUP_CODE).random().toString()
         val http = BackupHttpServer(accessCode, { container.fileStore.backupFiles() }) { message ->
             Log.d(TAG, message)
         }
@@ -83,7 +86,7 @@ class BackupService : Service() {
             http.start()
         } catch (e: Exception) {
             Log.w(TAG, "HTTP 服务启动失败: ${e.javaClass.simpleName}")
-            _status.value = BackupStatus(error = "端口不可用，请关闭其他占用 8080 的应用后重试")
+            _status.value = BackupStatus(error = "端口不可用，请关闭其他占用 $DEFAULT_BACKUP_PORT 的应用后重试")
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return
@@ -94,13 +97,16 @@ class BackupService : Service() {
         createChannel()
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_agenda)
-            .setContentTitle("体测备份服务运行中")
-            .setContentText("$ip:$port · 访问码 $accessCode")
-            .setStyle(NotificationCompat.BigTextStyle().bigText("电脑浏览器打开 $url"))
+            .setContentTitle(getString(R.string.backup_running))
+            .setContentText(getString(R.string.backup_running_text, ip, port, accessCode))
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(getString(R.string.backup_running_big, url))
+            )
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
-        startForeground(NOTIFICATION_ID, notification)
+        startForeground(BACKUP_NOTIFICATION_ID, notification)
         _status.value = BackupStatus(
             running = true, ip = ip, port = port, code = accessCode, url = url
         )

@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import com.example.tice.data.db.TiceDao
 import com.example.tice.data.file.FileStore
+import com.example.tice.util.exportStamp
 import com.example.tice.xlsx.ExportResult
 import com.example.tice.xlsx.XlsxCodec
 import kotlinx.coroutines.Dispatchers
@@ -14,9 +15,6 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import java.util.zip.ZipFile
 
 data class ExportOutcome(val result: ExportResult, val file: File)
@@ -46,8 +44,7 @@ class ExportRepository(private val dao: TiceDao, private val store: FileStore) {
             .groupBy { it.studentId }
             .mapValues { (_, list) -> list.associate { it.projectKey to it.value } }
 
-        val stamp = SimpleDateFormat("yyyyMMdd_HHmm", Locale.CHINA).format(Date())
-        val file = store.newExportFile("体测_${label}_$stamp.xlsx")
+        val file = store.newExportFile("体测_${label}_${exportStamp()}.xlsx")
         val template = store.templateFile()
         val startedAt = System.currentTimeMillis()
         // 只记体积与耗时，不记姓名、学籍号或工作表内容，便于在模拟器上对照 am_pss / meminfo

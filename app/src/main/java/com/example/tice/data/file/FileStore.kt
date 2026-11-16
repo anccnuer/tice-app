@@ -1,6 +1,7 @@
 package com.example.tice.data.file
 
 import android.content.Context
+import com.example.tice.util.backupFileName
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -31,11 +32,7 @@ class FileStore(context: Context) {
         backupsDir.listFiles { _, name -> name.endsWith(".zip") }?.sortedByDescending { it.lastModified() }
             ?: emptyList()
 
-    fun newBackupFile(): File {
-        val stamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.CHINA)
-            .format(java.util.Date())
-        return File(backupsDir, "tice-backup-$stamp.zip")
-    }
+    fun newBackupFile(): File = File(backupsDir, backupFileName())
 
     fun writeBackup(bytes: ByteArray): File {
         val file = newBackupFile()

@@ -1,6 +1,4 @@
-# 保留 Room 生成类与 Kotlin 数据类，避免 release 混淆后反序列化失败
--keep class com.example.tice.data.db.** { *; }
--keep class com.example.tice.xlsx.** { *; }
--keep class com.example.tice.backup.** { *; }
--keep class kotlin.Metadata { *; }
--dontwarn kotlinx.parcelize.**
+# Room 生成类、手写 JSON 字段名与 xlsx 正则拼接都不依赖类名/字段名反射，
+# 保留整个包会阻止 R8 裁剪这些核心模块，因此只保留真正的反射入口。
+-dontwarn org.xmlpull.v1.**
+-keep class org.xmlpull.v1.** { *; }

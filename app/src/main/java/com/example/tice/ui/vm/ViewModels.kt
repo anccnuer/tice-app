@@ -9,10 +9,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.tice.TiceApp
 import com.example.tice.backup.BackupService
 import com.example.tice.backup.BackupStatus
-import com.example.tice.data.db.ClassStat
-import com.example.tice.data.db.ProjectRuleEntity
-import com.example.tice.data.db.StudentEntity
 import com.example.tice.util.GradeUtil
+import com.example.tice.util.MAX_GROUP_SIZE
+import com.example.tice.util.MIN_GROUP_SIZE
 import com.example.tice.xlsx.XlsxCodec
 import com.example.tice.util.ProjectGroup
 import com.example.tice.util.groupProjects
@@ -28,24 +27,10 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileNotFoundException
 
-/** 项目级录入的三个阶段：看名单 → 分组录入 → 本轮完成。 */
-enum class ProjectPhase { None, Preview, Testing, Done }
-
-/** 每组人数的快捷候选值；加减微调可落到区间内任意整数。 */
-val GROUP_SIZE_OPTIONS = listOf(1, 2, 3, 4, 6)
-const val MIN_GROUP_SIZE = 1
-const val MAX_GROUP_SIZE = 6
-
 /** 取不到 ActivityManager 时按 64MB 单进程 heap 估算。 */
 private const val DEFAULT_MEMORY_CLASS_MB = 64
 /** 工作表体积预算下限，避免正常的学校上报表被误拒。 */
 private const val MIN_SHEET_BUDGET_BYTES = 2L * 1024 * 1024
-
-/** 整组保存前的校验汇总，用于把问题定位到具体同学。 */
-data class GroupCheck(
-    val blockers: List<String> = emptyList(),
-    val warnings: List<String> = emptyList()
-)
 
 /** 导出完成后的轻量摘要，避免把整张工作表字符串带出 IO 协程继续占内存。 */
 private data class ExportDone(
@@ -54,56 +39,6 @@ private data class ExportDone(
     val keptStudents: Int,
     val writtenCells: Int
 )
-
-data class TiceUiState(
-    val imported: Boolean = false,
-    val importSource: String = "",
-    val studentCount: Int = 0,
-    val projectCount: Int = 0,
-    val classes: List<ClassStat> = emptyList(),
-    /** 班级单选。 */
-    val selectedClasses: Set<String> = emptySet(),
-    val exportClasses: Set<String> = emptySet(),
-    val rules: List<ProjectRuleEntity> = emptyList(),
-    /** 测试页是否显示工作簿里的全部项目（默认只显示本年级默认项目）。 */
-    val showAllProjects: Boolean = false,
-    val projectGroups: List<ProjectGroup> = emptyList(),
-    /** 项目组 id → 已测人数（组内项目全部非空才算已测）。 */
-    val projectProgress: Map<String, Int> = emptyMap(),
-    val classTotal: Int = 0,
-    val activeGroup: ProjectGroup? = null,
-    val phase: ProjectPhase = ProjectPhase.None,
-    val roster: List<StudentEntity> = emptyList(),
-    /** 本组首位学生在 roster 中的下标；单人模式下就是当前学生。 */
-    val rosterIndex: Int = 0,
-    /** 一组叫出几名同学，默认 1 人保持原有单人体验；持久化在 meta("group_size")。 */
-    val groupSize: Int = 1,
-    /** 本组成绩：学籍号 → (项目名 → 输入值)。只持有当前组，不含全名单。 */
-    val groupScores: Map<String, Map<String, String>> = emptyMap(),
-    /** 整组保存前的越界确认文案；非空时由录入页弹确认框。 */
-    val pendingWarning: String = "",
-    val activeTested: Int = 0,
-    val message: String = "",
-    val error: String = "",
-    val busy: Boolean = false,
-    val downloadProgress: Int = 0,
-    val backupFiles: List<String> = emptyList(),
-    val lastExportUri: String = "",
-    val lastExportName: String = ""
-) {
-    /** 本组学生：从 rosterIndex 起最多 groupSize 人。 */
-    val currentGroup: List<StudentEntity>
-        get() = if (roster.isEmpty() || rosterIndex >= roster.size) emptyList()
-        else roster.subList(rosterIndex, (rosterIndex + groupSize).coerceAtMost(roster.size)).toList()
-
-    /** 第几组（1 起），用于顶栏与进度显示。 */
-    val groupNumber: Int get() = if (groupSize <= 0) 1 else rosterIndex / groupSize + 1
-
-    /** 共几组。 */
-    val groupCount: Int
-        get() = if (roster.isEmpty() || groupSize <= 0) 0
-        else (roster.size + groupSize - 1) / groupSize
-}
 
 class TiceViewModel(app: Application) : AndroidViewModel(app) {
     private val application: Application = getApplication()
@@ -179,18 +114,7 @@ class TiceViewModel(app: Application) : AndroidViewModel(app) {
     fun selectClass(classId: String) {
         val s = _state.value
         if (classId in s.selectedClasses) return
-        _state.update {
-            it.copy(
-                selectedClasses = setOf(classId),
-                activeGroup = null,
-                phase = ProjectPhase.None,
-                roster = emptyList(),
-                rosterIndex = 0,
-                groupScores = emptyMap(),
-                pendingWarning = "",
-                activeTested = 0
-            )
-        }
+        _state.update { it.closeSession().copy(selectedClasses = setOf(classId)) }
         refreshProgress()
     }
 
@@ -261,17 +185,7 @@ class TiceViewModel(app: Application) : AndroidViewModel(app) {
             fail("请先选择一个班级")
             return
         }
-        _state.update {
-            it.copy(
-                activeGroup = group,
-                phase = ProjectPhase.Preview,
-                roster = emptyList(),
-                rosterIndex = 0,
-                groupScores = emptyMap(),
-                pendingWarning = "",
-                activeTested = 0
-            )
-        }
+        _state.update { it.previewSession(group) }
         viewModelScope.launch {
             val roster = container.testRepository.untestedStudents(classId, group.keys)
             val tested = container.testRepository.testedCount(classId, group.keys)
@@ -294,15 +208,7 @@ class TiceViewModel(app: Application) : AndroidViewModel(app) {
             notify("本项目已全部测完，可点「修改已测成绩」核对")
             return@launch
         }
-        _state.update {
-            it.copy(
-                roster = roster,
-                rosterIndex = 0,
-                groupScores = emptyMap(),
-                pendingWarning = "",
-                phase = ProjectPhase.Testing
-            )
-        }
+        _state.update { it.startSession(roster) }
         loadScoresForGroup()
     }
 
@@ -386,20 +292,10 @@ class TiceViewModel(app: Application) : AndroidViewModel(app) {
                 val classId = s.selectedClasses.firstOrNull()
                 val tested = if (classId == null) s.activeTested
                 else container.testRepository.testedCount(classId, group.keys)
-                _state.update {
-                    it.copy(
-                        phase = ProjectPhase.Done,
-                        rosterIndex = s.roster.size,
-                        groupScores = emptyMap(),
-                        pendingWarning = "",
-                        activeTested = tested
-                    )
-                }
+                _state.update { it.finishSession(tested) }
                 refreshProgress()
             } else {
-                _state.update {
-                    it.copy(rosterIndex = next, groupScores = emptyMap(), pendingWarning = "")
-                }
+                _state.update { it.moveToGroup(next) }
                 loadScoresForGroup()
             }
         } catch (e: CancellationException) {
@@ -417,9 +313,7 @@ class TiceViewModel(app: Application) : AndroidViewModel(app) {
         if (s.rosterIndex <= 0) return@launch
         persistGroupScores(s)
         val previous = (s.rosterIndex - s.groupSize).coerceAtLeast(0)
-        _state.update {
-            it.copy(rosterIndex = previous, groupScores = emptyMap(), pendingWarning = "")
-        }
+        _state.update { it.moveToGroup(previous) }
         loadScoresForGroup()
     }
 
@@ -436,16 +330,7 @@ class TiceViewModel(app: Application) : AndroidViewModel(app) {
             refreshProgress()
             return@launch
         }
-        _state.update {
-            it.copy(
-                roster = roster,
-                rosterIndex = 0,
-                groupScores = emptyMap(),
-                pendingWarning = "",
-                phase = ProjectPhase.Testing,
-                activeTested = tested
-            )
-        }
+        _state.update { it.startSession(roster, tested) }
         loadScoresForGroup()
     }
 
@@ -460,17 +345,7 @@ class TiceViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun closeProject() {
-        _state.update {
-            it.copy(
-                activeGroup = null,
-                phase = ProjectPhase.None,
-                roster = emptyList(),
-                rosterIndex = 0,
-                groupScores = emptyMap(),
-                pendingWarning = "",
-                activeTested = 0
-            )
-        }
+        _state.update { it.closeSession() }
         refreshProgress()
     }
 
@@ -566,7 +441,7 @@ class TiceViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- 备份服务与恢复 ----------------
     fun createBackup() = viewModelScope.launch {
         busy(true)
-        runCatching { container.backupManager.createBackupZip() }
+        runCatching { withContext(Dispatchers.IO) { container.backupManager.createBackupZip() } }
             .onSuccess { refresh(); notify("备份包已生成：${it.name}，电脑可在同一 WiFi 下载") }
             .onFailure { fail("生成备份失败：${it.message}") }
         busy(false)
@@ -575,14 +450,17 @@ class TiceViewModel(app: Application) : AndroidViewModel(app) {
     fun restoreFromUri(uri: Uri) = viewModelScope.launch {
         busy(true)
         runCatching {
-            application.contentResolver.openInputStream(uri)?.use { input ->
-                container.backupManager.restore(input)
-            } ?: throw IllegalArgumentException("无法读取备份文件")
+            withContext(Dispatchers.IO) {
+                application.contentResolver.openInputStream(uri)?.use { input ->
+                    container.backupManager.restore(input)
+                } ?: throw IllegalArgumentException("无法读取备份文件")
+            }
         }.onSuccess {
             refresh()
             // 恢复会清空 meta，分组人数回到备份包里的设置（无则默认单人）
             _state.update { it.copy(groupSize = container.testRepository.savedGroupSize()) }
-            notify("恢复完成：${it.studentCount} 名学生、${it.scoreCount} 条成绩（恢复前已保留回滚快照）")
+            val snapshotHint = if (it.snapshotCreated) "恢复前已保留回滚快照" else "未能生成回滚快照，请自行确认数据"
+            notify("恢复完成：${it.studentCount} 名学生、${it.scoreCount} 条成绩（$snapshotHint）")
         }.onFailure { fail("恢复失败：${it.message}") }
         busy(false)
     }

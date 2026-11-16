@@ -24,7 +24,7 @@ powershell -ExecutionPolicy Bypass -File scripts\build-apk.ps1 -Install
 ```
 
 - 产物：`app\build\outputs\apk\debug\app-debug.apk`
-- `build-apk.ps1` 同时执行 `testDebugUnitTest`，其中 `XlsxCodecTest` 会在 `app\build\` 生成 `export-preview.xlsx`，用于校验导出保真度。
+- `build-apk.ps1` 同时执行 `testDebugUnitTest`（共 16 个用例：`XlsxCodecTest` 6 个、`GroupStateTest` 6 个、`BackupCodecTest` 4 个），其中 `XlsxCodecTest` 会在 `app\build\` 生成 `export-preview.xlsx`，用于校验导出保真度。
 - 也可手动运行（`build-apk.ps1` 已自动设置这些环境变量）：
   ```powershell
   $env:JAVA_HOME = "$PWD\.tools\jdk17"
@@ -132,9 +132,20 @@ git push origin v1.0.1
 
 1. 更新 `app/build.gradle.kts` 的 `versionCode`（每次递增）与 `versionName`；标签只用于命名 Release，不会自动写进 APK。
 2. 按第七节清单复核隐私与 `.gitignore`，确认没有真实学生数据或本机路径被提交。
-3. 本地先跑 `scripts\build-apk.ps1`，确认构建与 6 个单测通过后再打标签。
+3. 本地先跑 `scripts\build-apk.ps1`，确认构建与 16 个单测通过后再打标签。
 
-**产物说明**：工程尚未配置签名密钥，Release 附的是 debug 签名、可直接安装的 APK，适合校内自行分发。若要发布正式签名包，需在仓库 Secrets 放入 keystore 与口令、在 `app/build.gradle.kts` 增加 `signingConfig`，并把工作流的 `assembleDebug` 改为 `assembleRelease`；不要把未签名的 `app-release-unsigned.apk` 直接分发。
+**产物说明**：工程尚未配置签名密钥，Release 附的是 debug 签名、可直接安装的 APK，适合校内自行分发。`app/build.gradle.kts` 的 release 已启用 R8 与资源收缩，实测未签名产物约 1.19 MB（debug 约 8.37 MB）；若要发布正式签名包，需在仓库 Secrets 放入 keystore 与口令、增加 `signingConfig`，并把工作流的 `assembleDebug` 改为 `assembleRelease`。切换前必须用真实设备回归导入、导出、备份恢复与局域网服务；不要把未签名的 `app-release-unsigned.apk` 直接分发。
+
+### 体积对比（v0.1.0 优化后）
+
+| 阶段 | 产物 | 体积 |
+| --- | --- | --- |
+| 优化前基线 | `app-debug.apk` | 15.98 MB |
+| 移除 `material-icons-extended` 与无用的 Compose 预览依赖 | `app-debug.apk` | 8.73 MB |
+| 精简混淆规则、语言收敛、清理无用资源 | `app-debug.apk` | 8.37 MB |
+| 启用 R8 + `shrinkResources` | `app-release-unsigned.apk` | 1.19 MB |
+
+debug 包仍包含调试信息与未压缩类，日常分发可继续用；release 包必须先用正式 keystore 签名并做真机回归。
 
 > 如果希望改成「在 GitHub 网页点 Publish release 之后才构建」，把 `on:` 改为 `release: types: [published]`，并改用 `gh release upload` 把产物上传到已存在的 Release。
 
@@ -149,7 +160,10 @@ app/src/main/java/com/example/tice/
   xlsx/        # OOXML 解析与模板保真导出（纯 JVM，可命令行单测）
   data/db/     # Room 学生、成绩、项目规则、元数据
   data/repo/   # 导入、选班测试、导出编排
-  backup/      # 备份包、只读 HTTP 服务、前台服务
-  ui/          # Compose 五个页面、主题、导航
-app/src/test/  # XlsxCodecTest 命令行单元测试
+  backup/      # 备份编解码（BackupCodec）、备份包、只读 HTTP 服务、网页模板、前台服务
+  ui/vm/       # TiceUiState、GroupSession 与 TiceViewModel
+  ui/screens/  # 五个页面；测试页拆为 TestScreen / TestRecording / TestWidgets
+  ui/          # Compose 公共组件、主题、导航
+  util/        # 常量、日期格式、校验与年级换算
+app/src/test/  # XlsxCodecTest、GroupStateTest、BackupCodecTest
 ```

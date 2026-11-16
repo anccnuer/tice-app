@@ -76,6 +76,25 @@ fun AppTopBar(
     }
 }
 
+/** 两种按钮共用的高度与内边距，保证视觉完全一致。 */
+private fun actionButtonModifier(modifier: Modifier, dense: Boolean): Modifier =
+    modifier.heightIn(min = if (dense) 40.dp else 56.dp)
+
+private fun actionButtonPadding(dense: Boolean): PaddingValues =
+    if (dense) PaddingValues(horizontal = 16.dp, vertical = 8.dp) else ButtonDefaults.ContentPadding
+
+@Composable
+private fun ActionButtonLabel(text: String, icon: ImageVector?, dense: Boolean) {
+    if (icon != null) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+    }
+    Text(
+        text,
+        style = if (dense) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleMedium
+    )
+}
+
 /** Material 3 主按钮（Filled Button）。 */
 @Composable
 fun PrimaryButton(
@@ -88,23 +107,12 @@ fun PrimaryButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier.heightIn(min = if (dense) 40.dp else 56.dp),
+        modifier = actionButtonModifier(modifier, dense),
         enabled = enabled,
         shape = ButtonDefaults.shape,
-        contentPadding = if (dense) {
-            PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-        } else {
-            ButtonDefaults.ContentPadding
-        }
+        contentPadding = actionButtonPadding(dense)
     ) {
-        if (icon != null) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-        }
-        Text(
-            text,
-            style = if (dense) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleMedium
-        )
+        ActionButtonLabel(text, icon, dense)
     }
 }
 
@@ -120,23 +128,12 @@ fun SecondaryButton(
 ) {
     FilledTonalButton(
         onClick = onClick,
-        modifier = modifier.heightIn(min = if (dense) 40.dp else 56.dp),
+        modifier = actionButtonModifier(modifier, dense),
         enabled = enabled,
         shape = ButtonDefaults.shape,
-        contentPadding = if (dense) {
-            PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-        } else {
-            ButtonDefaults.ContentPadding
-        }
+        contentPadding = actionButtonPadding(dense)
     ) {
-        if (icon != null) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-        }
-        Text(
-            text,
-            style = if (dense) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleMedium
-        )
+        ActionButtonLabel(text, icon, dense)
     }
 }
 

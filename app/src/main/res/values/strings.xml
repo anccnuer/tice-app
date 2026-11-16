@@ -4,4 +4,13 @@
     <string name="backup_channel_name">局域网备份服务</string>
     <string name="backup_channel_desc">手机端只读备份网页服务正在运行</string>
     <string name="press_back_again_to_exit">再按一次返回键退出程序</string>
+    <string name="backup_starting">正在启动体测备份服务…</string>
+    <string name="backup_running">体测备份服务运行中</string>
+    <string name="backup_running_text">%1$s:%2$d · 访问码 %3$s</string>
+    <string name="backup_running_big">电脑浏览器打开 %1$s</string>
+    <string name="nav_data">数据</string>
+    <string name="nav_classes">选班</string>
+    <string name="nav_test">测试</string>
+    <string name="nav_center">中心</string>
+    <string name="nav_record">录入</string>
 </resources>

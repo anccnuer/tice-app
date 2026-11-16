@@ -8,10 +8,8 @@ import com.example.tice.data.db.StudentEntity
 import com.example.tice.data.db.TiceDao
 import com.example.tice.data.file.FileStore
 import com.example.tice.data.net.XlsxDownloader
+import com.example.tice.util.displayDateTime
 import com.example.tice.xlsx.XlsxCodec
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 data class ImportSummary(
     val studentCount: Int,
@@ -70,7 +68,7 @@ class WorkbookRepository(
                 sortOrder = index
             )
         }
-        val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date())
+        val stamp = displayDateTime(System.currentTimeMillis())
         val meta = listOf(
             MetaEntity("source", source),
             MetaEntity("imported_at", stamp),

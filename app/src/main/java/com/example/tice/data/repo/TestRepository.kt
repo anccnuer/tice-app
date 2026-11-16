@@ -6,13 +6,13 @@ import com.example.tice.data.db.ProjectRuleEntity
 import com.example.tice.data.db.ScoreEntity
 import com.example.tice.data.db.StudentEntity
 import com.example.tice.data.db.TiceDao
+import com.example.tice.util.MAX_GROUP_SIZE
+import com.example.tice.util.MIN_GROUP_SIZE
 import kotlinx.coroutines.flow.Flow
 
 class TestRepository(private val dao: TiceDao) {
     private companion object {
         const val GROUP_SIZE_KEY = "group_size"
-        const val MIN_GROUP_SIZE = 1
-        const val MAX_GROUP_SIZE = 6
     }
 
     fun classStats(): Flow<List<ClassStat>> = dao.classStats()

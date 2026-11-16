@@ -1,11 +1,6 @@
 package com.example.tice.ui.nav
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -15,12 +10,12 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -33,14 +28,6 @@ import com.example.tice.ui.screens.ImportScreen
 import com.example.tice.ui.screens.TestHomeScreen
 import com.example.tice.ui.screens.TestScreen
 import com.example.tice.ui.vm.TiceViewModel
-
-sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
-    data object Import : Screen("import", "数据", Icons.Filled.Home)
-    data object Classes : Screen("classes", "选班", Icons.AutoMirrored.Filled.List)
-    data object Batch : Screen("batch", "测试", Icons.Filled.Edit)
-    data object Center : Screen("center", "中心", Icons.Filled.Settings)
-    data object Test : Screen("test", "录入", Icons.Filled.Edit)
-}
 
 @Composable
 fun AppNavHost() {
@@ -71,8 +58,8 @@ fun AppNavHost() {
                     NavigationBarItem(
                         selected = route == screen.route || (screen is Screen.Batch && route == Screen.Test.route),
                         onClick = { navController.navigateFlat(screen.route) },
-                        icon = { Icon(screen.icon, contentDescription = screen.label) },
-                        label = { Text(screen.label) },
+                        icon = { Icon(screen.icon, contentDescription = stringResource(screen.labelRes)) },
+                        label = { Text(stringResource(screen.labelRes)) },
                         alwaysShowLabel = true
                     )
                 }
