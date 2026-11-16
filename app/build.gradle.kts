@@ -1,7 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.google.devtools.ksp)
+}
+
+// 签名配置来自本地 keystore.properties（.gitignore 已排除）；缺失时 release 不签名，不影响 debug 构建。
+val keystorePropsFile = rootProject.file("keystore.properties")
+val keystoreProps = Properties().apply {
+    if (keystorePropsFile.isFile) keystorePropsFile.inputStream().use { load(it) }
 }
 
 android {
@@ -18,12 +26,26 @@ android {
         resourceConfigurations += setOf("zh", "en")
     }
 
+    signingConfigs {
+        if (keystorePropsFile.isFile) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // 现有分发链路仍然构建 debug；这里为将来切换 release 分发预置压缩配置。
+            // 现有分发链路仍然构建 debug；release 已预置压缩与签名，可用 assembleRelease 产出可安装包。
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (keystorePropsFile.isFile) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

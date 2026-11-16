@@ -134,7 +134,15 @@ git push origin v1.0.1
 2. 按第七节清单复核隐私与 `.gitignore`，确认没有真实学生数据或本机路径被提交。
 3. 本地先跑 `scripts\build-apk.ps1`，确认构建与 16 个单测通过后再打标签。
 
-**产物说明**：工程尚未配置签名密钥，Release 附的是 debug 签名、可直接安装的 APK，适合校内自行分发。`app/build.gradle.kts` 的 release 已启用 R8 与资源收缩，实测未签名产物约 1.19 MB（debug 约 8.37 MB）；若要发布正式签名包，需在仓库 Secrets 放入 keystore 与口令、增加 `signingConfig`，并把工作流的 `assembleDebug` 改为 `assembleRelease`。切换前必须用真实设备回归导入、导出、备份恢复与局域网服务；不要把未签名的 `app-release-unsigned.apk` 直接分发。
+**产物说明**：本地已配置 release 签名，`assembleRelease` 产出可直接安装的 `app-release.apk`（约 1.2 MB）；GitHub Actions 仍发布 debug 包，适合校内自行分发。
+
+#### 签名与密钥管理
+
+- 本地文件：`tice-release.jks`（PKCS12，RSA 4096，有效期 10000 天）与 `keystore.properties`，两者都被 `.gitignore` 排除，**不要提交**。
+- 证书 SHA-256 指纹：`28:32:6B:DB:D9:C5:F0:6F:E9:19:8A:0A:D1:9A:73:3E:CB:B5:21:6F:46:40:4D:8F:27:0B:8A:98:EA:F5:FF:55`。
+- **必须离线备份** `tice-release.jks` 与 `keystore.properties`。密钥或口令丢失后，新包无法覆盖安装旧版本。
+- 未配置 `keystore.properties` 时（例如 CI 或他人克隆），release 自动回退为未签名，不影响 debug 构建。
+- 若要让 GitHub Actions 发布签名包：在仓库 Secrets 配置 `KEYSTORE_BASE64`、`KEYSTORE_PASSWORD`、`KEY_ALIAS`、`KEY_PASSWORD`，工作流解码 keystore 后执行 `assembleRelease`。当前工作流未启用该步骤，发布产物仍是 debug 包。
 
 ### 体积对比（v0.1.0 优化后）
 
